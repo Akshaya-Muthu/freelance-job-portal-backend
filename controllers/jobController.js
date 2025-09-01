@@ -1,5 +1,7 @@
 import Job from '../models/jobModel.js';
 
+// -------------------- JOB CONTROLLERS --------------------
+
 // @desc Get all jobs
 const getJobs = async (req, res) => {
   try {
@@ -49,6 +51,8 @@ const createJob = async (req, res) => {
       about,
       applications: [],
       postedBy: req.user._id,
+      reviews: [],
+      averageRating: 0
     });
 
     const createdJob = await job.save();
@@ -117,20 +121,77 @@ const getJobsBySearch = async (req, res) => {
     const query = {};
 
     if (!keyword && !location && !company) {
-      return res.status(400).json({ message: 'Please provide a search keyword or location' });
+      return res.status(400).json({ message: 'Please provide a search keyword, location, or company' });
     }
     if (keyword) query.title = { $regex: keyword, $options: 'i' };
     if (location) query.location = { $regex: location, $options: 'i' };
     if (company) query.company = { $regex: company, $options: 'i' };
 
     const jobs = await Job.find(query).populate('postedBy', 'name email');
-    if (jobs.length === 0) {
-      return res.status(404).json({ message: 'No jobs found matching your criteria' });
-    }
+    if (jobs.length === 0) return res.status(404).json({ message: 'No jobs found matching your criteria' });
+
     res.status(200).json({ message: "Jobs fetched successfully", jobs });
   } catch (error) {
     res.status(500).json({ message: 'Failed to search jobs', error: error.message });
   }
 };
 
-export { getJobs, getJobById, createJob, updateJob, deleteJob, getMyJobs, getJobsBySearch };
+// -------------------- REVIEWS --------------------
+
+// @desc Add a review to a job
+const addJobReview = async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const job = await Job.findById(req.params.id);
+
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    // Check if user already reviewed
+    const alreadyReviewed = job.reviews.find(
+      (r) => r.user.toString() === req.user._id.toString()
+    );
+    if (alreadyReviewed) {
+      return res.status(400).json({ message: 'You have already reviewed this job' });
+    }
+
+    const review = {
+      user: req.user._id,
+      rating: Number(rating),
+      comment
+    };
+
+    job.reviews.push(review);
+    job.averageRating =
+      job.reviews.reduce((acc, item) => item.rating + acc, 0) / job.reviews.length;
+
+    await job.save();
+    res.status(201).json({ message: 'Review added successfully', review });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to add review', error: error.message });
+  }
+};
+
+// @desc Get all reviews for a job
+const getJobReviews = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id).populate('reviews.user', 'name email');
+    if (!job) return res.status(404).json({ message: 'Job not found' });
+
+    res.json({ reviews: job.reviews, averageRating: job.averageRating });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to fetch reviews', error: error.message });
+  }
+};
+
+// -------------------- EXPORT --------------------
+export { 
+  getJobs,
+  getJobById,
+  createJob,
+  updateJob,
+  deleteJob,
+  getMyJobs,
+  getJobsBySearch,
+  addJobReview,
+  getJobReviews
+};

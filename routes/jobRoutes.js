@@ -1,5 +1,4 @@
 import express from 'express';
-
 const router = express.Router();
 
 import {
@@ -9,20 +8,41 @@ import {
   updateJob,
   deleteJob,
   getMyJobs,
-  getJobsBySearch
+  getJobsBySearch,
+  addJobReview,
+  getJobReviews
 } from '../controllers/jobController.js';
 
 import { protect, isEmployer } from '../middlewares/authMiddleware.js';
 
-// Public routes
-router.get('/', getJobs); // Get all jobs
-router.get('/my-jobs', protect, isEmployer, getMyJobs); // Get jobs posted by logged-in employer
-router.get('/search', getJobsBySearch);  
-router.get('/:id', getJobById); // Get single job by ID
+// -------------------- Public Routes --------------------
+// Get all jobs
+router.get('/', getJobs);
 
-// Protected routes for employers
-router.post('/', protect, isEmployer, createJob); // Create a job
-router.put('/:id', protect, isEmployer, updateJob); // Update a job
-router.delete('/:id', protect, isEmployer, deleteJob); // Delete a job
+// Get jobs posted by logged-in employer
+router.get('/my-jobs', protect, isEmployer, getMyJobs);
+
+// Search jobs
+router.get('/search', getJobsBySearch);
+
+// Get single job by ID
+router.get('/:id', getJobById);
+
+// Get all reviews for a job
+router.get('/:id/reviews', getJobReviews);
+
+// -------------------- Protected Routes (Employer) --------------------
+// Create a job
+router.post('/', protect, isEmployer, createJob);
+
+// Update a job
+router.put('/:id', protect, isEmployer, updateJob);
+
+// Delete a job
+router.delete('/:id', protect, isEmployer, deleteJob);
+
+// -------------------- Protected Routes (Any Logged-in User) --------------------
+// Add a review to a job
+router.post('/:id/reviews', protect, addJobReview);
 
 export default router;

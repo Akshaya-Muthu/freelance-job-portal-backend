@@ -2,7 +2,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import http from 'http';                // ✅ required for socket.io
+import http from 'http';               // ✅ required for socket.io
 import { Server } from 'socket.io';     // ✅ socket.io server
 import connectDB from './config/db.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
@@ -27,8 +27,8 @@ const app = express();
 
 // ✅ CORS setup for both dev + deployed frontend
 const allowedOrigins = [
-  "http://localhost:5173",             // local dev
-  "https://jobfreeportal.netlify.app"  // deployed frontend
+  "http://localhost:5173",            // local dev
+  "https://jobfreeportal.netlify.app" // deployed frontend
 ];
 
 const corsOptions = {
@@ -47,6 +47,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // ✅ Middlewares
+app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -56,9 +57,9 @@ app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-// ✅ API routes
+// -------------------- API Routes --------------------
 app.use('/api/auth', authRoutes);
-app.use('/api/jobs', jobRoutes);
+app.use('/api/jobs', jobRoutes);                // Jobs + Reviews integrated here
 app.use('/api/applications', applicationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/saveJobs', saveJobRoutes);
@@ -66,17 +67,16 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use("/api/payments", paymentRoutes);
 
-// ✅ Chat routes
+// -------------------- Chat Routes --------------------
 app.use('/api/chat', chatRoutes);
 
-// ✅ Error handling
+// -------------------- Error handling --------------------
 app.use(notFound);
 app.use(errorHandler);
 
-// ✅ Wrap app with HTTP server
+// -------------------- HTTP + Socket.IO --------------------
 const server = http.createServer(app);
 
-// ✅ Initialize socket.io with proper CORS
 const io = new Server(server, {
   pingTimeout: 60000,
   cors: {
@@ -90,19 +90,16 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log("⚡ User connected:", socket.id);
 
-  // Setup user
   socket.on("setup", (userData) => {
     socket.join(userData._id);  
     socket.emit("connected");
   });
 
-  // Join chat room
   socket.on("join-chat", (chatId) => {
     socket.join(chatId);
     console.log(`User joined chat: ${chatId}`);
   });
 
-  // Send message
   socket.on("new-message", (msg) => {
     const chat = msg.chat;
     if (!chat?.participants) return;
@@ -119,6 +116,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// ✅ Run server with HTTP + Socket.IO
+// -------------------- Start Server --------------------
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
