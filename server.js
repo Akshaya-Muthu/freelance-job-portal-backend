@@ -25,12 +25,24 @@ connectDB();
 
 const app = express();
 
-// ✅ CORS setup
+// ✅ CORS setup for both dev + deployed frontend
+const allowedOrigins = [
+  "http://localhost:5173",             // local dev
+  "https://jobfreeportal.netlify.app"  // deployed frontend
+];
+
 const corsOptions = {
-  origin: "http://localhost:5173",  // frontend URL
-  credentials: true,               // allow cookies & auth headers
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 };
+
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
@@ -68,7 +80,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   pingTimeout: 60000,
   cors: {
-    origin: "http://localhost:5173",
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST"]
   }
